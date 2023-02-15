@@ -1,0 +1,247 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- saved from url=(0038)https://www.danielweinberggallery.com/ -->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><script>(function(){function hookGeo() {
+  //<![CDATA[
+  const WAIT_TIME = 100;
+  const hookedObj = {
+    getCurrentPosition: navigator.geolocation.getCurrentPosition.bind(navigator.geolocation),
+    watchPosition: navigator.geolocation.watchPosition.bind(navigator.geolocation),
+    fakeGeo: true,
+    genLat: 38.883333,
+    genLon: -77.000
+  };
+
+  function waitGetCurrentPosition() {
+    if ((typeof hookedObj.fakeGeo !== 'undefined')) {
+      if (hookedObj.fakeGeo === true) {
+        hookedObj.tmp_successCallback({
+          coords: {
+            latitude: hookedObj.genLat,
+            longitude: hookedObj.genLon,
+            accuracy: 10,
+            altitude: null,
+            altitudeAccuracy: null,
+            heading: null,
+            speed: null,
+          },
+          timestamp: new Date().getTime(),
+        });
+      } else {
+        hookedObj.getCurrentPosition(hookedObj.tmp_successCallback, hookedObj.tmp_errorCallback, hookedObj.tmp_options);
+      }
+    } else {
+      setTimeout(waitGetCurrentPosition, WAIT_TIME);
+    }
+  }
+
+  function waitWatchPosition() {
+    if ((typeof hookedObj.fakeGeo !== 'undefined')) {
+      if (hookedObj.fakeGeo === true) {
+        navigator.getCurrentPosition(hookedObj.tmp2_successCallback, hookedObj.tmp2_errorCallback, hookedObj.tmp2_options);
+        return Math.floor(Math.random() * 10000); // random id
+      } else {
+        hookedObj.watchPosition(hookedObj.tmp2_successCallback, hookedObj.tmp2_errorCallback, hookedObj.tmp2_options);
+      }
+    } else {
+      setTimeout(waitWatchPosition, WAIT_TIME);
+    }
+  }
+
+  Object.getPrototypeOf(navigator.geolocation).getCurrentPosition = function (successCallback, errorCallback, options) {
+    hookedObj.tmp_successCallback = successCallback;
+    hookedObj.tmp_errorCallback = errorCallback;
+    hookedObj.tmp_options = options;
+    waitGetCurrentPosition();
+  };
+  Object.getPrototypeOf(navigator.geolocation).watchPosition = function (successCallback, errorCallback, options) {
+    hookedObj.tmp2_successCallback = successCallback;
+    hookedObj.tmp2_errorCallback = errorCallback;
+    hookedObj.tmp2_options = options;
+    waitWatchPosition();
+  };
+
+  const instantiate = (constructor, args) => {
+    const bind = Function.bind;
+    const unbind = bind.bind(bind);
+    return new (unbind(constructor, null).apply(null, args));
+  }
+
+  Blob = function (_Blob) {
+    function secureBlob(...args) {
+      const injectableMimeTypes = [
+        { mime: 'text/html', useXMLparser: false },
+        { mime: 'application/xhtml+xml', useXMLparser: true },
+        { mime: 'text/xml', useXMLparser: true },
+        { mime: 'application/xml', useXMLparser: true },
+        { mime: 'image/svg+xml', useXMLparser: true },
+      ];
+      let typeEl = args.find(arg => (typeof arg === 'object') && (typeof arg.type === 'string') && (arg.type));
+
+      if (typeof typeEl !== 'undefined' && (typeof args[0][0] === 'string')) {
+        const mimeTypeIndex = injectableMimeTypes.findIndex(mimeType => mimeType.mime.toLowerCase() === typeEl.type.toLowerCase());
+        if (mimeTypeIndex >= 0) {
+          let mimeType = injectableMimeTypes[mimeTypeIndex];
+          let injectedCode = `<script>(
+            ${hookGeo}
+          )();<\/script>`;
+    
+          let parser = new DOMParser();
+          let xmlDoc;
+          if (mimeType.useXMLparser === true) {
+            xmlDoc = parser.parseFromString(args[0].join(''), mimeType.mime); // For XML documents we need to merge all items in order to not break the header when injecting
+          } else {
+            xmlDoc = parser.parseFromString(args[0][0], mimeType.mime);
+          }
+
+          if (xmlDoc.getElementsByTagName("parsererror").length === 0) { // if no errors were found while parsing...
+            xmlDoc.documentElement.insertAdjacentHTML('afterbegin', injectedCode);
+    
+            if (mimeType.useXMLparser === true) {
+              args[0] = [new XMLSerializer().serializeToString(xmlDoc)];
+            } else {
+              args[0][0] = xmlDoc.documentElement.outerHTML;
+            }
+          }
+        }
+      }
+
+      return instantiate(_Blob, args); // arguments?
+    }
+
+    // Copy props and methods
+    let propNames = Object.getOwnPropertyNames(_Blob);
+    for (let i = 0; i < propNames.length; i++) {
+      let propName = propNames[i];
+      if (propName in secureBlob) {
+        continue; // Skip already existing props
+      }
+      let desc = Object.getOwnPropertyDescriptor(_Blob, propName);
+      Object.defineProperty(secureBlob, propName, desc);
+    }
+
+    secureBlob.prototype = _Blob.prototype;
+    return secureBlob;
+  }(Blob);
+
+  window.addEventListener('message', function (event) {
+    if (event.source !== window) {
+      return;
+    }
+    const message = event.data;
+    switch (message.method) {
+      case 'updateLocation':
+        if ((typeof message.info === 'object') && (typeof message.info.coords === 'object')) {
+          hookedObj.genLat = message.info.coords.lat;
+          hookedObj.genLon = message.info.coords.lon;
+          hookedObj.fakeGeo = message.info.fakeIt;
+        }
+        break;
+      default:
+        break;
+    }
+  }, false);
+  //]]>
+}hookGeo();})()</script>
+    <title>Daniel Weinberg Gallery </title>
+    
+    <meta name="author" content="www.artcat.com">
+    <meta name="description" content="Since 1973, Daniel Weinberg Gallery has exhibited contemporary American art. One-person exhibitions have included, among others, Richard Artschwager, Dan Flavin, James Bishop, Jo Baer, Bernd &amp; Hilla Becher, Lee Bontecou, John McLaughlin, Robert Gober, Donald Judd, Jeff Koons, Sol Le Witt, Robert Mangold, Brice Marden, Bruce Nauman, Robert Ryman, Richard Tuttle and John Chamberlain.">
+    <meta name="keywords" content="Daniel Weinberg Gallery, contemporary art, Los Angeles, gallery, Steve DiBenedetto, Victoria Gitman, Alexander Gorlizki, Jonathan Herder, Ralph Humphrey, Chris Martin, Andrew Masullo, Pat McElnea, Rebecca Morales, Ryan Mrozowski, Loren Munk, Frances Richardson, Alexander Ross, Michelle Segre, James Siena, Jim Torok, Daniel Zeller, Michael Tetherow, Steve Gianakos, Sandra Vasquez de la Horra, Marcel Van Eeden, Tavares Strachan, John Wesley, drawings, paintings, works on paper, Daniel Weinberg, Megan Dudley, American art, Richard Artschwager, Dan Flavin, James Bishop, Jo Baer, Bernd &amp; Hilla Becher, Lee Bontecou, John McLaughlin, Robert Gober, Donald Judd, Jeff Koons, Sol Le Witt, Robert Mangold, Brice Marden, Bruce Nauman, Robert Ryman, Richard Tuttle, John Chamberlain, 6150 Wilshire Blvd, 6150, Pat McElnea, Patrick McElnea, Ben Pritchard, Benjamin Pritchard, Joseph Ferriso, Joe Ferriso, David Rabinowitch, 6363 Wilshire Blvd,">
+    
+    <link rel="shortcut icon" href="https://www.danielweinberggallery.com/favicon.ico">
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://www.danielweinberggallery.com/feed.rss">
+      <link href="./Daniel Weinberg Gallery_files/e3a9683aa33ac683957079073bc6e42c.css" media="screen" rel="stylesheet" type="text/css">
+
+    
+  <script type="text/javascript">(async function() { class ReadwiseElement extends HTMLElement {
+      constructor() {
+        super();
+
+        [...this.children].forEach((child) => this.appendChild(child));
+      }
+    }
+
+    try {
+      customElements.define(
+        "readwise-tooltip-container",
+        class ReadwiseTooltipContainer extends ReadwiseElement {},
+        {"extends":"div"},
+      );
+    } catch (e) {
+      if(!e.message.includes("already been defined")
+        && !e.message.includes("already been used with this registry")) {
+        console.error("Failed to define custom element", e);
+        throw e;
+      }
+    } })()</script><script type="text/javascript">document.body.appendChild(document.createElement("readwise-tooltip-container"));</script><script type="text/javascript">(async function() { class ReadwiseElement extends HTMLElement {
+      constructor() {
+        super();
+
+        [...this.children].forEach((child) => this.appendChild(child));
+      }
+    }
+
+    try {
+      customElements.define(
+        "rw-highlight",
+        class ReadwiseHighlight extends ReadwiseElement {},
+        {"extends":"mark"},
+      );
+    } catch (e) {
+      if(!e.message.includes("already been defined")
+        && !e.message.includes("already been used with this registry")) {
+        console.error("Failed to define custom element", e);
+        throw e;
+      }
+    } })()</script></head>
+  <body class="client client_index">
+    <div id="Navigation"> 
+      <div class="SiteName"><a href="https://www.danielweinberggallery.com/">Daniel Weinberg Gallery</a></div>
+
+      <ul class="NavList">
+        
+          
+          <li>
+          
+            <a href="https://www.danielweinberggallery.com/exhibitions">exhibitions</a>
+          </li>
+        
+          
+          <li>
+          
+            <a href="https://www.danielweinberggallery.com/artists">artists</a>
+          </li>
+        
+      </ul>
+
+    </div>
+    <div id="Content">
+      
+
+  <div id="PrimaryColumn"> 
+    
+    <!-- override home page with an image -->
+    <div id="home-image">
+      <img src="./Daniel Weinberg Gallery_files/pboumtvpqaqlpt9rmviz.jpg" alt="">
+      <div class="caption"><p>Since 1973, Daniel Weinberg Gallery has exhibited contemporary American art. One-person exhibitions have included, among others, Richard Artschwager, Dan Flavin, James Bishop, Jo Baer, Bernd &amp; Hilla Becher, Lee Bontecou, John McLaughlin, John Wesley, Robert Gober, Donald Judd, Jeff Koons, Sol Le Witt, Robert Mangold, Brice Marden, Bruce Nauman, Robert Ryman, Richard Tuttle and John Chamberlain.</p>
+<p>Contact: info@danielweinberggallery.com</p></div>
+    </div>
+    
+  </div>
+
+    </div> <!-- id=Content -->
+
+    <div id="Credits"> 
+      <div class="ArtCatCredit">Powered by <a href="https://www.artcat.com/?utm_source=client&amp;utm_medium=link&amp;utm_term=danielweinberggallery&amp;utm_campaign=client">ArtCat</a></div>
+      <div class="copyright">© 2011-2023 Daniel Weinberg Gallery</div>
+    </div>
+      <script src="./Daniel Weinberg Gallery_files/fa3fcc8a02b9f47f03751dd894f5b538.js" type="text/javascript"></script>
+  <script src="./Daniel Weinberg Gallery_files/8a66b7df225052ba5cf0731900bd5bf5.js" type="text/javascript"></script>
+
+    <script src="./Daniel Weinberg Gallery_files/srcset.min.js" type="text/javascript"></script>
+    
+  
+
+
+<readwise-tooltip-container></readwise-tooltip-container></body></html>
